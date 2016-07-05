@@ -56,7 +56,7 @@ class CassandraRDDReplSpec extends SparkCassandraITFlatSpecBase with SparkRepl {
         |  case class ClassInObject(key: Int, value: String)
         |}
         |val cnt7 = sc.cassandraTable[SampleObject.ClassInObject]("$ks", "simple_kv").collect.length
-      """.stripMargin)
+      """.stripMargin, SparkTemplate.defaultConf)
     output should not include "error:"
     output should not include "Exception"
     output should include("cnt1: Int = 3")

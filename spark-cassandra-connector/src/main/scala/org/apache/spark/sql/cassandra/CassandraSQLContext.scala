@@ -4,8 +4,7 @@ import java.util.NoSuchElementException
 
 import com.datastax.spark.connector.util.ConfigParameter
 import org.apache.spark.SparkContext
-import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
-import org.apache.spark.sql.{DataFrame, Dataset, SQLContext, execution => sparkexecution}
+import org.apache.spark.sql.{DataFrame, SQLContext, execution => sparkexecution}
 
 /** Allows to execute SQL queries against Cassandra and access results as
   * `SchemaRDD` collections. Predicate pushdown to Cassandra is supported.
@@ -30,11 +29,14 @@ import org.apache.spark.sql.{DataFrame, Dataset, SQLContext, execution => sparke
   *   val rdd = cc.sql("SELECT * FROM keyspace.table ...")
   *
   * }}} */
-class CassandraSQLContext(sc: SparkContext) extends SQLContext(sc) {
+class CassandraSQLContext(ss: CassandraSession) extends SQLContext(ss) {
   import org.apache.spark.sql.cassandra.CassandraSQLContext._
 
-  override protected[sql] def executePlan(plan: LogicalPlan) =
-    new sparkexecution.QueryExecution(sparkSession, plan)
+  def this(sc: SparkContext) = this(new CassandraSession(sc))
+
+  def cassandraSession = this.sparkSession.asInstanceOf[CassandraSession]
+
+  ss.setWrappedContext(this)
 
   /** Set default Cassandra keyspace to be used when accessing tables with unqualified names. */
   def setKeyspace(ks: String) = {
@@ -66,10 +68,7 @@ class CassandraSQLContext(sc: SparkContext) extends SQLContext(sc) {
   }
 
   /** Executes SQL query against Cassandra and returns DataFrame representing the result. */
-  def cassandraSql(cassandraQuery: String): DataFrame = Dataset.ofRows(sparkSession, super.parseSql(cassandraQuery))
-
-  /** Delegates to [[cassandraSql]] */
-  override def sql(cassandraQuery: String): DataFrame = cassandraSql(cassandraQuery)
+  def cassandraSql(cassandraQuery: String): DataFrame = sql(cassandraQuery)
 
   /** Set the Spark Cassandra Connector configuration parameters */
   def setConf(options: Map[String, String]): CassandraSQLContext = {

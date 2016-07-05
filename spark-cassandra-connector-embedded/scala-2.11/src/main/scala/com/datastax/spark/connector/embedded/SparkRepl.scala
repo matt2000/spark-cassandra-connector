@@ -11,10 +11,7 @@ import scala.tools.nsc.GenericRunnerSettings
 
 trait SparkRepl {
 
-  def runInterpreter(input: String): String = {
-    val conf = new SparkConf(loadDefaults = false)
-    SparkTemplate.defaultConf.getAll.filter(_._1.startsWith("spark.cassandra."))
-      .foreach(p => conf.set(p._1, p._2))
+  def runInterpreter(input: String, conf: SparkConf): String = {
     val in = new BufferedReader(new StringReader(input + "\n"))
     val out = new StringWriter()
     val cl = getClass.getClassLoader
@@ -29,6 +26,7 @@ trait SparkRepl {
       case _ =>
     }
 
+    Main.conf.setAll(conf.getAll)
     val interp = new SparkILoop(Some(in), new PrintWriter(out))
     Main.interp = interp
     val separator = System.getProperty("path.separator")
