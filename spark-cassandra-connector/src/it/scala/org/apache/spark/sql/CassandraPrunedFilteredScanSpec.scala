@@ -2,11 +2,10 @@ package org.apache.spark.sql
 
 import com.datastax.spark.connector.SparkCassandraITFlatSpecBase
 import com.datastax.spark.connector.cql.CassandraConnector
-import com.datastax.spark.connector.rdd.{CqlWhereClause, CassandraTableScanRDD}
+import com.datastax.spark.connector.rdd.{CassandraTableScanRDD, CqlWhereClause}
 import com.datastax.spark.connector.util.Logging
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.execution.{Filter, SparkPlan, PhysicalRDD}
+import org.apache.spark.sql.execution.{FilterExec, RDDScanExec, SparkPlan}
 
 import scala.concurrent.Future
 
@@ -86,8 +85,8 @@ class CassandraPrunedFilteredScanSpec extends SparkCassandraITFlatSpecBase with 
     }
 
     sparkPlan match {
-      case prdd: PhysicalRDD => _findCassandraTableScanRDD(prdd.rdd)
-      case filter: Filter => findCassandraTableScanRDD(filter.child)
+      case prdd: RDDScanExec => _findCassandraTableScanRDD(prdd.rdd)
+      case filter: FilterExec => findCassandraTableScanRDD(filter.child)
       case _ => None
     }
   }

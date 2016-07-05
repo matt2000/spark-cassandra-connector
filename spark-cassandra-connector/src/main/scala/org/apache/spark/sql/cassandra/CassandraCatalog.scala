@@ -1,20 +1,16 @@
 package org.apache.spark.sql.cassandra
 
-import com.datastax.spark.connector.rdd.CassandraTableScanRDD
-
-import scala.collection.JavaConversions._
-
+import com.datastax.spark.connector.cql.{CassandraConnector, CassandraConnectorConf, Schema}
+import com.datastax.spark.connector.util.Logging
 import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
-import org.apache.spark.Logging
 import org.apache.spark.sql.cassandra.CassandraSourceRelation._
-import org.apache.spark.sql.catalyst.analysis.Catalog
-import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, Subquery}
+import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, SubqueryAlias}
 import org.apache.spark.sql.catalyst.{CatalystConf, SimpleCatalystConf, TableIdentifier}
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 
-import com.datastax.spark.connector.cql.{CassandraConnector, CassandraConnectorConf, Schema}
+import scala.collection.JavaConversions._
 
-private[cassandra] class CassandraCatalog(csc: CassandraSQLContext) extends Catalog with Logging {
+private[cassandra] class CassandraCatalog(csc: CassandraSQLContext) extends Logging {
 
   val caseSensitive: Boolean = true
 
@@ -29,9 +25,9 @@ private[cassandra] class CassandraCatalog(csc: CassandraSQLContext) extends Cata
     CacheBuilder.newBuilder().maximumSize(1000).build(cacheLoader)
   }
 
-  override def lookupRelation(tableIdent: TableIdentifier, alias: Option[String]): LogicalPlan = {
+  def lookupRelation(tableIdent: TableIdentifier, alias: Option[String]): LogicalPlan = {
     val tableLogicPlan = cachedDataSourceTables.get(tableIdent)
-    alias.map(a => Subquery(a, tableLogicPlan)).getOrElse(tableLogicPlan)
+    alias.map(a => SubqueryAlias(a, tableLogicPlan)).getOrElse(tableLogicPlan)
   }
 
   /** Build logic plan from a CassandraSourceRelation */
@@ -39,7 +35,7 @@ private[cassandra] class CassandraCatalog(csc: CassandraSQLContext) extends Cata
     val (cluster, database, table) = getClusterDBTableNames(tableIdentifier)
     val tableRef = TableRef(table, database, Option(cluster))
     val sourceRelation = CassandraSourceRelation(tableRef, csc, CassandraSourceOptions())
-    Subquery(table, LogicalRelation(sourceRelation))
+    SubqueryAlias(table, LogicalRelation(sourceRelation))
   }
 
   /** Return cluster, database and table names from a table identifier*/
@@ -49,19 +45,19 @@ private[cassandra] class CassandraCatalog(csc: CassandraSQLContext) extends Cata
     (csc.getCluster, database, table)
   }
 
-  override def registerTable(tableIdent: TableIdentifier, plan: LogicalPlan): Unit = {
+  def registerTable(tableIdent: TableIdentifier, plan: LogicalPlan): Unit = {
     cachedDataSourceTables.put(tableIdent, plan)
   }
 
-  override def unregisterTable(tableIdent: TableIdentifier): Unit = {
+  def unregisterTable(tableIdent: TableIdentifier): Unit = {
     cachedDataSourceTables.invalidate(tableIdent)
   }
 
-  override def unregisterAllTables(): Unit = {
+  def unregisterAllTables(): Unit = {
     cachedDataSourceTables.invalidateAll()
   }
 
-  override def tableExists(tableIdent: TableIdentifier): Boolean = {
+  def tableExists(tableIdent: TableIdentifier): Boolean = {
     val (cluster, database, table) = getClusterDBTableNames(tableIdent)
     val cached = cachedDataSourceTables.asMap().containsKey(tableIdent)
     if (cached) {
@@ -76,7 +72,7 @@ private[cassandra] class CassandraCatalog(csc: CassandraSQLContext) extends Cata
     }
   }
 
-  override def getTables(databaseName: Option[String]): Seq[(String, Boolean)] = {
+  def getTables(databaseName: Option[String]): Seq[(String, Boolean)] = {
     val cluster = csc.getCluster
     val tableNamesFromCache = getTablesFromCache(databaseName, Option(cluster)).map(_._1)
     val tablesFromCassandra = getTablesFromCassandra(databaseName)
@@ -116,9 +112,9 @@ private[cassandra] class CassandraCatalog(csc: CassandraSQLContext) extends Cata
     new CassandraConnector(CassandraConnectorConf(conf))
   }
 
-  override val conf: CatalystConf = SimpleCatalystConf(caseSensitive)
+  val conf: CatalystConf = SimpleCatalystConf(caseSensitive)
 
-  override def refreshTable(tableIdent: TableIdentifier): Unit = {
+  def refreshTable(tableIdent: TableIdentifier): Unit = {
     cachedDataSourceTables.refresh(tableIdent)
   }
 }

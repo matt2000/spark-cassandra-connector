@@ -39,8 +39,7 @@ object Versions {
   val JodaC           = "1.2"
   val JodaT           = "2.3"
   val JOpt            = "3.2"
-  val Kafka           = "0.8.2.1"
-  val Kafka210        = "0.8.1.1"
+  val Kafka           = "0.8.2.2"
   val Lzf             = "0.8.4"
   val CodaHaleMetrics = "3.0.2"
   val ScalaCheck      = "1.12.5"
@@ -57,7 +56,7 @@ object Versions {
   // and install in a local Maven repository. This is all done automatically, however it will work
   // only on Unix/OSX operating system. Windows users have to build and install Spark manually if the
   // desired version is not yet published into a public Maven repository.
-  val Spark           = "1.6.1"
+  val Spark           = "2.0.0-preview"
   val SparkJetty      = "8.1.14.v20131031"
   val JSR166e         = "1.1.0"
   val Airlift         = "0.6"

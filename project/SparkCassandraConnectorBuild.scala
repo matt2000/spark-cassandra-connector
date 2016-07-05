@@ -70,7 +70,7 @@ object CassandraSparkBuild extends Build {
   lazy val demos = RootProject(
     name = "demos",
     dir = demosPath,
-    contains = Seq(simpleDemos/*, kafkaStreaming*/, twitterStreaming)
+    contains = Seq(simpleDemos, kafkaStreaming)
   ).disablePlugins(AssemblyPlugin, SparkPackagePlugin)
 
   lazy val simpleDemos = Project(
@@ -79,21 +79,13 @@ object CassandraSparkBuild extends Build {
     settings = demoSettings,
     dependencies = Seq(connector, embedded)
   ).disablePlugins(AssemblyPlugin, SparkPackagePlugin)
-/*
-  lazy val kafkaStreaming = CrossScalaVersionsProject(
-    name = "kafka-streaming",
-    conf = demoSettings ++ kafkaDemoSettings ++ Seq(
-      libraryDependencies ++= (CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((2, minor)) if minor < 11 => Dependencies.kafka
-        case _ => Seq.empty
-   }))).copy(base = demosPath / "kafka-streaming", dependencies = Seq(connector, embedded))
-*/
-  lazy val twitterStreaming = Project(
-    id = "twitter-streaming",
-    base = demosPath / "twitter-streaming",
-    settings = demoSettings ++ Seq(libraryDependencies ++= Dependencies.twitter),
-    dependencies = Seq(connector, embedded)
-  ).disablePlugins(AssemblyPlugin, SparkPackagePlugin)
+
+  lazy val kafkaStreaming = Project(
+    id = "kafka-streaming",
+    base = demosPath / "kafka-streaming",
+    settings = demoSettings ++ Seq(libraryDependencies ++= Seq(Artifacts.Demos.kafka, Artifacts.Demos.kafkaStreaming)),
+    dependencies = Seq(connector, embedded))
+      .disablePlugins(AssemblyPlugin, SparkPackagePlugin)
 
   lazy val refDoc = Project(
     id = s"$namespace-doc",
@@ -206,9 +198,8 @@ object Artifacts {
   }
 
   object Demos {
-    val kafka             = "org.apache.kafka"        % "kafka_2.10"                  % Kafka                 kafkaExclusions   // ApacheV2
-    val kafkaStreaming    = "org.apache.spark"        % "spark-streaming-kafka_2.10"  % Spark   % "provided"  sparkExclusions   // ApacheV2
-    val twitterStreaming  = "org.apache.spark"        %% "spark-streaming-twitter"    % Spark   % "provided"  sparkExclusions   // ApacheV2
+    val kafka             = "org.apache.kafka"        %% "kafka"                      % Kafka                 kafkaExclusions   // ApacheV2
+    val kafkaStreaming    = "org.apache.spark"        %% "spark-streaming-kafka-0-8"  % Spark   % "provided"  sparkExclusions   // ApacheV2
   }
 
   object Test {
@@ -263,17 +254,15 @@ object Dependencies {
 
   val spark = Seq(sparkCore, sparkStreaming, sparkSql, sparkCatalyst, sparkHive, sparkUnsafe)
 
-  val connector = testKit ++ metrics ++ jetty ++ logging ++ akka ++ cassandra ++ spark.map(_ % "provided") ++ Seq(
-    commonsLang3, config, guava, jodaC, jodaT, lzf, jsr166e)
+  val connector = (testKit ++ metrics ++ jetty ++ logging ++ cassandra ++ spark ++ Seq(
+    commonsLang3, config, guava, jodaC, jodaT, lzf, jsr166e)) map (x => x exclude(org = "org.slf4j", name = "log4j-over-slf4j"))
 
-  val embedded = logging ++ spark ++ cassandra ++ Seq(
-    cassandraServer % "it,test", Embedded.jopt, Embedded.sparkRepl, Embedded.kafka, Embedded.snappy, guava)
+  val embedded = (logging ++ spark ++ cassandra ++ akka ++ Seq(
+    cassandraServer % "it,test", Embedded.jopt, Embedded.sparkRepl, Embedded.kafka, Embedded.snappy, guava)) map (x => x exclude(org = "org.slf4j", name = "log4j-over-slf4j"))
 
   val perf = logging ++ spark ++ cassandra
 
   val kafka = Seq(Demos.kafka, Demos.kafkaStreaming)
-
-  val twitter = Seq(sparkStreaming, Demos.twitterStreaming)
 
   val documentationMappings = Seq(
     DocumentationMapping(url(s"http://spark.apache.org/docs/${Versions.Spark}/api/scala/"),
